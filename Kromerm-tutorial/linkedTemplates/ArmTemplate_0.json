@@ -1,0 +1,253 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "Kromerm-tutorial"
+		},
+		"Radio_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Radio_LS'"
+		},
+		"AzureSynapseAnalytics_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSynapseAnalytics_LS'"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/Radio_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Radio_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSynapseAnalytics_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSynapseAnalytics_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/RadioJSON')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "Radio_LS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "Json",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "small_radio_json.json",
+						"folderPath": "Data_Transformation/input",
+						"container": "data-files"
+					}
+				},
+				"schema": {
+					"type": "object",
+					"properties": {
+						"ts": {
+							"type": "integer"
+						},
+						"userId": {
+							"type": "string"
+						},
+						"sessionId": {
+							"type": "integer"
+						},
+						"page": {
+							"type": "string"
+						},
+						"auth": {
+							"type": "string"
+						},
+						"method": {
+							"type": "string"
+						},
+						"status": {
+							"type": "integer"
+						},
+						"level": {
+							"type": "string"
+						},
+						"itemInSession": {
+							"type": "integer"
+						},
+						"location": {
+							"type": "string"
+						},
+						"lastName": {
+							"type": "string"
+						},
+						"firstName": {
+							"type": "string"
+						},
+						"registration": {
+							"type": "integer"
+						},
+						"gender": {
+							"type": "string"
+						},
+						"artist": {
+							"type": "string"
+						},
+						"song": {
+							"type": "string"
+						},
+						"length": {
+							"type": "number"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/Radio_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SynapseDataSet')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSynapseAnalytics_LS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlDWTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Radio"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSynapseAnalytics_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SourceData')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "RadioJSON",
+								"type": "DatasetReference"
+							},
+							"name": "SourceData"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "SynapseDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "DestinationDW"
+						}
+					],
+					"transformations": [
+						{
+							"name": "ColumnFilter"
+						},
+						{
+							"name": "GenderGrouping"
+						},
+						{
+							"name": "LocationGrouping"
+						},
+						{
+							"name": "OriginalSelect"
+						},
+						{
+							"name": "GenderJoin"
+						},
+						{
+							"name": "LocationJoin"
+						},
+						{
+							"name": "CleanUp"
+						},
+						{
+							"name": "ColumnAlter"
+						}
+					],
+					"script": "source(output(\n\t\tts as string,\n\t\tuserId as string,\n\t\tsessionId as string,\n\t\tpage as string,\n\t\tauth as string,\n\t\tmethod as string,\n\t\tstatus as string,\n\t\tlevel as string,\n\t\titemInSession as string,\n\t\tlocation as string,\n\t\tlastName as string,\n\t\tfirstName as string,\n\t\tregistration as string,\n\t\tgender as string,\n\t\tartist as string,\n\t\tsong as string,\n\t\tlength as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> SourceData\nSourceData select(mapColumn(\n\t\tTimeStamp = ts,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ColumnFilter\nColumnFilter aggregate(groupBy(gender,\n\t\tlevel),\n\tCount_Gender = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> GenderGrouping\nColumnFilter aggregate(groupBy(location),\n\tCount_Location = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> LocationGrouping\nColumnFilter select(mapColumn(\n\t\tTimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> OriginalSelect\nOriginalSelect, GenderGrouping join(OriginalSelect@TimeStamp == GenderGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> GenderJoin\nGenderJoin, LocationGrouping join(OriginalSelect@TimeStamp == LocationGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> LocationJoin\nLocationJoin select(mapColumn(\n\t\tTimeStamp = OriginalSelect@TimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel = OriginalSelect@level,\n\t\tlocation = OriginalSelect@location,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender = OriginalSelect@gender,\n\t\tregistration,\n\t\tgender = GenderGrouping@gender,\n\t\tlevel = GenderGrouping@level,\n\t\tCount_Gender,\n\t\tTimeStamp = GenderGrouping@TimeStamp,\n\t\tlocation = LocationGrouping@location,\n\t\tCount_Location,\n\t\tTimeStamp = LocationGrouping@TimeStamp\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CleanUp\nCleanUp derive(FulllName = firstName + \" \" + lastName,\n\t\tState = split(location, ', ')[2]) ~> ColumnAlter\nColumnAlter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DestinationDW"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/RadioJSON')]",
+				"[concat(variables('factoryId'), '/datasets/SynapseDataSet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/radiodata_transformation')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "RadioData",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "SourceData",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"SourceData": {},
+									"DestinationDW": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/SourceData')]"
+			]
+		}
+	]
+}
