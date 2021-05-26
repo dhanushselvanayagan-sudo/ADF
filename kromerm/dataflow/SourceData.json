@@ -12,9 +12,42 @@
 					"name": "SourceData"
 				}
 			],
-			"sinks": [],
-			"transformations": [],
-			"script": "source(output(\n\t\tts as string,\n\t\tuserId as string,\n\t\tsessionId as string,\n\t\tpage as string,\n\t\tauth as string,\n\t\tmethod as string,\n\t\tstatus as string,\n\t\tlevel as string,\n\t\titemInSession as string,\n\t\tlocation as string,\n\t\tlastName as string,\n\t\tfirstName as string,\n\t\tregistration as string,\n\t\tgender as string,\n\t\tartist as string,\n\t\tsong as string,\n\t\tlength as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> SourceData"
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SynapseDataSet",
+						"type": "DatasetReference"
+					},
+					"name": "DestinationDW"
+				}
+			],
+			"transformations": [
+				{
+					"name": "ColumnFilter"
+				},
+				{
+					"name": "GenderGrouping"
+				},
+				{
+					"name": "LocationGrouping"
+				},
+				{
+					"name": "OriginalSelect"
+				},
+				{
+					"name": "GenderJoin"
+				},
+				{
+					"name": "LocationJoin"
+				},
+				{
+					"name": "CleanUp"
+				},
+				{
+					"name": "ColumnAlter"
+				}
+			],
+			"script": "source(output(\n\t\tts as string,\n\t\tuserId as string,\n\t\tsessionId as string,\n\t\tpage as string,\n\t\tauth as string,\n\t\tmethod as string,\n\t\tstatus as string,\n\t\tlevel as string,\n\t\titemInSession as string,\n\t\tlocation as string,\n\t\tlastName as string,\n\t\tfirstName as string,\n\t\tregistration as string,\n\t\tgender as string,\n\t\tartist as string,\n\t\tsong as string,\n\t\tlength as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> SourceData\nSourceData select(mapColumn(\n\t\tTimeStamp = ts,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ColumnFilter\nColumnFilter aggregate(groupBy(gender,\n\t\tlevel),\n\tCount_Gender = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> GenderGrouping\nColumnFilter aggregate(groupBy(location),\n\tCount_Location = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> LocationGrouping\nColumnFilter select(mapColumn(\n\t\tTimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> OriginalSelect\nOriginalSelect, GenderGrouping join(OriginalSelect@TimeStamp == GenderGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> GenderJoin\nGenderJoin, LocationGrouping join(OriginalSelect@TimeStamp == LocationGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> LocationJoin\nLocationJoin select(mapColumn(\n\t\tTimeStamp = OriginalSelect@TimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel = OriginalSelect@level,\n\t\tlocation = OriginalSelect@location,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender = OriginalSelect@gender,\n\t\tregistration,\n\t\tgender = GenderGrouping@gender,\n\t\tlevel = GenderGrouping@level,\n\t\tCount_Gender,\n\t\tTimeStamp = GenderGrouping@TimeStamp,\n\t\tlocation = LocationGrouping@location,\n\t\tCount_Location,\n\t\tTimeStamp = LocationGrouping@TimeStamp\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CleanUp\nCleanUp derive(FulllName = firstName + \" \" + lastName,\n\t\tState = split(location, ', ')[2]) ~> ColumnAlter\nColumnAlter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DestinationDW"
 		}
 	}
 }

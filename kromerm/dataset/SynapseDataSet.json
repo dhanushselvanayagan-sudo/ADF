@@ -1,0 +1,16 @@
+{
+	"name": "SynapseDataSet",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureSynapseAnalytics_LS",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": [],
+		"typeProperties": {
+			"schema": "dbo",
+			"table": "Radio"
+		}
+	}
+}
