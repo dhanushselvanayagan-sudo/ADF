@@ -12,9 +12,21 @@
 					"name": "SourceMovie"
 				}
 			],
-			"sinks": [],
-			"transformations": [],
-			"script": "source(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> SourceMovie"
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable_DS",
+						"type": "DatasetReference"
+					},
+					"name": "SinkDestination"
+				}
+			],
+			"transformations": [
+				{
+					"name": "AlterRow"
+				}
+			],
+			"script": "source(output(\n\t\tmovie as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\tRating as integer,\n\t\t{Rotton Tomato} as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tlimit: 100,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> SourceMovie\nSourceMovie alterRow(deleteIf(year < 1900 || isNull(year))) ~> AlterRow\nAlterRow sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> SinkDestination"
 		}
 	}
 }
