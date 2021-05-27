@@ -1,0 +1,20 @@
+{
+	"name": "MoviesUpdate",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "AzureSqlTable_DS",
+						"type": "DatasetReference"
+					},
+					"name": "SourceMovie"
+				}
+			],
+			"sinks": [],
+			"transformations": [],
+			"script": "source(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> SourceMovie"
+		}
+	}
+}
