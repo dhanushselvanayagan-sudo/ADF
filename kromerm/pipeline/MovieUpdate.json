@@ -3,7 +3,7 @@
 	"properties": {
 		"activities": [
 			{
-				"name": "MovieUpdate_DF",
+				"name": "TypeConversion",
 				"type": "ExecuteDataFlow",
 				"dependsOn": [],
 				"policy": {
@@ -16,16 +16,14 @@
 				"userProperties": [],
 				"typeProperties": {
 					"dataflow": {
-						"referenceName": "MovieSource",
+						"referenceName": "TypeConversion",
 						"type": "DataFlowReference"
 					},
 					"compute": {
 						"coreCount": 8,
 						"computeType": "General"
 					},
-					"traceLevel": "Fine",
-					"runConcurrently": true,
-					"continueOnError": true
+					"traceLevel": "Fine"
 				}
 			}
 		],

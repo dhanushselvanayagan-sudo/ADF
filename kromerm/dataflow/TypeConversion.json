@@ -1,0 +1,32 @@
+{
+	"name": "TypeConversion",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "SQL_DS",
+						"type": "DatasetReference"
+					},
+					"name": "MovieSource"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "SQL_DS",
+						"type": "DatasetReference"
+					},
+					"name": "DestinationSink"
+				}
+			],
+			"transformations": [
+				{
+					"name": "TypeConversion"
+				}
+			],
+			"script": "source(output(\n\t\tmovie as string,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as string,\n\t\tRating as string,\n\t\t{Rotton Tomato} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> MovieSource\nMovieSource derive(movie = toInteger(movie),\n\t\tyear = toInteger(year),\n\t\tRating = toInteger(Rating),\n\t\t{Rotton Tomato} = toInteger(\"Rotton Tomato\")) ~> TypeConversion\nTypeConversion sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\ttransactionCommit: 'batch',\n\treportSuccessOnError: false) ~> DestinationSink"
+		}
+	}
+}
