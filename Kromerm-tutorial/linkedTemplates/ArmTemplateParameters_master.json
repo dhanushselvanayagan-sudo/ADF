@@ -5,10 +5,19 @@
 		"factoryName": {
 			"value": "Kromerm-tutorial"
 		},
+		"AzureSynapseAnalytics_LS_connectionString": {
+			"value": ""
+		},
 		"Radio_LS_connectionString": {
 			"value": ""
 		},
-		"AzureSynapseAnalytics_LS_connectionString": {
+		"DataBlobStorage_LS_connectionString": {
+			"value": ""
+		},
+		"AzureSql_LS_connectionString": {
+			"value": ""
+		},
+		"Logging_LS_connectionString": {
 			"value": ""
 		},
 		"containerUri": {

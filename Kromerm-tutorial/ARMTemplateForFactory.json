@@ -7,13 +7,25 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "Kromerm-tutorial"
 		},
+		"AzureSynapseAnalytics_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSynapseAnalytics_LS'"
+		},
 		"Radio_LS_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'Radio_LS'"
 		},
-		"AzureSynapseAnalytics_LS_connectionString": {
+		"DataBlobStorage_LS_connectionString": {
 			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'AzureSynapseAnalytics_LS'"
+			"metadata": "Secure string for 'connectionString' of 'DataBlobStorage_LS'"
+		},
+		"AzureSql_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSql_LS'"
+		},
+		"Logging_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Logging_LS'"
 		}
 	},
 	"variables": {
@@ -62,78 +74,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/dataflows/SourceData')]"
 			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/SourceData')]",
-			"type": "Microsoft.DataFactory/factories/dataflows",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"type": "MappingDataFlow",
-				"typeProperties": {
-					"sources": [
-						{
-							"dataset": {
-								"referenceName": "RadioJSON",
-								"type": "DatasetReference"
-							},
-							"name": "SourceData"
-						}
-					],
-					"sinks": [
-						{
-							"dataset": {
-								"referenceName": "SynapseDataSet",
-								"type": "DatasetReference"
-							},
-							"name": "DestinationDW"
-						}
-					],
-					"transformations": [
-						{
-							"name": "ColumnFilter"
-						},
-						{
-							"name": "GenderGrouping"
-						},
-						{
-							"name": "LocationGrouping"
-						},
-						{
-							"name": "OriginalSelect"
-						},
-						{
-							"name": "GenderJoin"
-						},
-						{
-							"name": "LocationJoin"
-						},
-						{
-							"name": "CleanUp"
-						},
-						{
-							"name": "ColumnAlter"
-						}
-					],
-					"script": "source(output(\n\t\tts as string,\n\t\tuserId as string,\n\t\tsessionId as string,\n\t\tpage as string,\n\t\tauth as string,\n\t\tmethod as string,\n\t\tstatus as string,\n\t\tlevel as string,\n\t\titemInSession as string,\n\t\tlocation as string,\n\t\tlastName as string,\n\t\tfirstName as string,\n\t\tregistration as string,\n\t\tgender as string,\n\t\tartist as string,\n\t\tsong as string,\n\t\tlength as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> SourceData\nSourceData select(mapColumn(\n\t\tTimeStamp = ts,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ColumnFilter\nColumnFilter aggregate(groupBy(gender,\n\t\tlevel),\n\tCount_Gender = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> GenderGrouping\nColumnFilter aggregate(groupBy(location),\n\tCount_Location = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> LocationGrouping\nColumnFilter select(mapColumn(\n\t\tTimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> OriginalSelect\nOriginalSelect, GenderGrouping join(OriginalSelect@TimeStamp == GenderGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> GenderJoin\nGenderJoin, LocationGrouping join(OriginalSelect@TimeStamp == LocationGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> LocationJoin\nLocationJoin select(mapColumn(\n\t\tTimeStamp = OriginalSelect@TimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel = OriginalSelect@level,\n\t\tlocation = OriginalSelect@location,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender = OriginalSelect@gender,\n\t\tregistration,\n\t\tgender = GenderGrouping@gender,\n\t\tlevel = GenderGrouping@level,\n\t\tCount_Gender,\n\t\tTimeStamp = GenderGrouping@TimeStamp,\n\t\tlocation = LocationGrouping@location,\n\t\tCount_Location,\n\t\tTimeStamp = LocationGrouping@TimeStamp\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CleanUp\nCleanUp derive(FulllName = firstName + \" \" + lastName,\n\t\tState = split(location, ', ')[2]) ~> ColumnAlter\nColumnAlter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DestinationDW"
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/RadioJSON')]",
-				"[concat(variables('factoryId'), '/datasets/SynapseDataSet')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/Radio_LS')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "AzureBlobStorage",
-				"typeProperties": {
-					"connectionString": "[parameters('Radio_LS_connectionString')]"
-				}
-			},
-			"dependsOn": []
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/RadioJSON')]",
@@ -216,19 +156,6 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/AzureSynapseAnalytics_LS')]",
-			"type": "Microsoft.DataFactory/factories/linkedServices",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"annotations": [],
-				"type": "AzureSqlDW",
-				"typeProperties": {
-					"connectionString": "[parameters('AzureSynapseAnalytics_LS_connectionString')]"
-				}
-			},
-			"dependsOn": []
-		},
-		{
 			"name": "[concat(parameters('factoryName'), '/SynapseDataSet')]",
 			"type": "Microsoft.DataFactory/factories/datasets",
 			"apiVersion": "2018-06-01",
@@ -247,6 +174,443 @@
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/AzureSynapseAnalytics_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSynapseAnalytics_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSynapseAnalytics_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Radio_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Radio_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SourceData')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "RadioJSON",
+								"type": "DatasetReference"
+							},
+							"name": "SourceData"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "SynapseDataSet",
+								"type": "DatasetReference"
+							},
+							"name": "DestinationDW"
+						}
+					],
+					"transformations": [
+						{
+							"name": "ColumnFilter"
+						},
+						{
+							"name": "GenderGrouping"
+						},
+						{
+							"name": "LocationGrouping"
+						},
+						{
+							"name": "OriginalSelect"
+						},
+						{
+							"name": "GenderJoin"
+						},
+						{
+							"name": "LocationJoin"
+						},
+						{
+							"name": "CleanUp"
+						},
+						{
+							"name": "ColumnAlter"
+						}
+					],
+					"script": "source(output(\n\t\tts as string,\n\t\tuserId as string,\n\t\tsessionId as string,\n\t\tpage as string,\n\t\tauth as string,\n\t\tmethod as string,\n\t\tstatus as string,\n\t\tlevel as string,\n\t\titemInSession as string,\n\t\tlocation as string,\n\t\tlastName as string,\n\t\tfirstName as string,\n\t\tregistration as string,\n\t\tgender as string,\n\t\tartist as string,\n\t\tsong as string,\n\t\tlength as double\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tdocumentForm: 'documentPerLine') ~> SourceData\nSourceData select(mapColumn(\n\t\tTimeStamp = ts,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> ColumnFilter\nColumnFilter aggregate(groupBy(gender,\n\t\tlevel),\n\tCount_Gender = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> GenderGrouping\nColumnFilter aggregate(groupBy(location),\n\tCount_Location = count(),\n\t\tTimeStamp = first(TimeStamp)) ~> LocationGrouping\nColumnFilter select(mapColumn(\n\t\tTimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel,\n\t\tlocation,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender,\n\t\tregistration\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> OriginalSelect\nOriginalSelect, GenderGrouping join(OriginalSelect@TimeStamp == GenderGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> GenderJoin\nGenderJoin, LocationGrouping join(OriginalSelect@TimeStamp == LocationGrouping@TimeStamp,\n\tjoinType:'left',\n\tbroadcast: 'auto')~> LocationJoin\nLocationJoin select(mapColumn(\n\t\tTimeStamp = OriginalSelect@TimeStamp,\n\t\tpage,\n\t\tmethod,\n\t\tstatus,\n\t\tlevel = OriginalSelect@level,\n\t\tlocation = OriginalSelect@location,\n\t\tlastName,\n\t\tfirstName,\n\t\tgender = OriginalSelect@gender,\n\t\tregistration,\n\t\tgender = GenderGrouping@gender,\n\t\tlevel = GenderGrouping@level,\n\t\tCount_Gender,\n\t\tTimeStamp = GenderGrouping@TimeStamp,\n\t\tlocation = LocationGrouping@location,\n\t\tCount_Location,\n\t\tTimeStamp = LocationGrouping@TimeStamp\n\t),\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true) ~> CleanUp\nCleanUp derive(FulllName = firstName + \" \" + lastName,\n\t\tState = split(location, ', ')[2]) ~> ColumnAlter\nColumnAlter sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\tformat: 'table',\n\tstaged: false,\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'stopOnFirstError') ~> DestinationDW"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/RadioJSON')]",
+				"[concat(variables('factoryId'), '/datasets/SynapseDataSet')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MovieMove')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "MoveToSQL",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobStorageReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "AzureSqlSink",
+								"tableOption": "autoCreate"
+							},
+							"enableStaging": false,
+							"logSettings": {
+								"enableCopyActivityLog": true,
+								"copyActivityLogSettings": {
+									"logLevel": "Info",
+									"enableReliableLogging": false
+								},
+								"logLocationSettings": {
+									"linkedServiceName": {
+										"referenceName": "Logging_LS",
+										"type": "LinkedServiceReference"
+									},
+									"path": "data-files"
+								}
+							},
+							"translator": {
+								"type": "TabularTranslator",
+								"mappings": [
+									{
+										"source": {
+											"name": "movie",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "movie",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "title",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "title",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "genres",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "genres",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "year",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "year",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Rating",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Rating",
+											"type": "String",
+											"physicalType": "String"
+										}
+									},
+									{
+										"source": {
+											"name": "Rotton Tomato",
+											"type": "String",
+											"physicalType": "String"
+										},
+										"sink": {
+											"name": "Rotton Tomato",
+											"type": "String",
+											"physicalType": "String"
+										}
+									}
+								],
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "MoviesDS",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "SQL_DS",
+								"type": "DatasetReference",
+								"parameters": {}
+							}
+						]
+					}
+				],
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/MoviesDS')]",
+				"[concat(variables('factoryId'), '/datasets/SQL_DS')]",
+				"[concat(variables('factoryId'), '/linkedServices/Logging_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/DataBlobStorage_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('DataBlobStorage_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MoviesDS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "DataBlobStorage_LS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobStorageLocation",
+						"fileName": "moviesDB.csv",
+						"folderPath": "Data_Transformation/input",
+						"container": "data-files"
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "movie",
+						"type": "String"
+					},
+					{
+						"name": "title",
+						"type": "String"
+					},
+					{
+						"name": "genres",
+						"type": "String"
+					},
+					{
+						"name": "year",
+						"type": "String"
+					},
+					{
+						"name": "Rating",
+						"type": "String"
+					},
+					{
+						"name": "Rotton Tomato",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/DataBlobStorage_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureSql_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDatabase",
+				"typeProperties": {
+					"connectionString": "[parameters('AzureSql_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/SQL_DS')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "AzureSql_LS",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlTable",
+				"schema": [],
+				"typeProperties": {
+					"schema": "dbo",
+					"table": "Movies"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/AzureSql_LS')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/Logging_LS')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('Logging_LS_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MovieUpdate')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "MovieUpdate_DF",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "1.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "MovieSource",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"MovieSource": {},
+									"MovieSink": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine",
+							"runConcurrently": true,
+							"continueOnError": true
+						}
+					}
+				],
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/MovieSource')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/MovieSource')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "SQL_DS",
+								"type": "DatasetReference"
+							},
+							"name": "MovieSource"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "SQL_DS",
+								"type": "DatasetReference"
+							},
+							"name": "MovieSink"
+						}
+					],
+					"transformations": [
+						{
+							"name": "TypeConversion"
+						}
+					],
+					"script": "source(output(\n\t\tmovie as string,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as string,\n\t\tRating as string,\n\t\t{Rotton Tomato} as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tlimit: 50,\n\tisolationLevel: 'READ_UNCOMMITTED',\n\tformat: 'table') ~> MovieSource\nMovieSource derive(year = toInteger(year),\n\t\t{Rotton Tomato} = toInteger('Rotton Tomato'),\n\t\tmovie = toInteger(movie),\n\t\tRating = toInteger(Rating)) ~> TypeConversion\nTypeConversion sink(allowSchemaDrift: true,\n\tvalidateSchema: false,\n\tdeletable:false,\n\tinsertable:true,\n\tupdateable:false,\n\tupsertable:false,\n\ttruncate:true,\n\tformat: 'table',\n\tskipDuplicateMapInputs: true,\n\tskipDuplicateMapOutputs: true,\n\terrorHandlingOption: 'allErrors',\n\ttransactionCommit: 'single',\n\treportSuccessOnError: false) ~> MovieSink"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/SQL_DS')]"
 			]
 		}
 	]

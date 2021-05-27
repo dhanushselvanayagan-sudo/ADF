@@ -7,13 +7,25 @@
 			"metadata": "Data Factory name",
 			"defaultValue": "Kromerm-tutorial"
 		},
+		"AzureSynapseAnalytics_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSynapseAnalytics_LS'"
+		},
 		"Radio_LS_connectionString": {
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'Radio_LS'"
 		},
-		"AzureSynapseAnalytics_LS_connectionString": {
+		"DataBlobStorage_LS_connectionString": {
 			"type": "secureString",
-			"metadata": "Secure string for 'connectionString' of 'AzureSynapseAnalytics_LS'"
+			"metadata": "Secure string for 'connectionString' of 'DataBlobStorage_LS'"
+		},
+		"AzureSql_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'AzureSql_LS'"
+		},
+		"Logging_LS_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'Logging_LS'"
 		},
 		"containerUri": {
 			"type": "string",
@@ -42,11 +54,20 @@
 					"factoryName": {
 						"value": "[parameters('factoryName')]"
 					},
+					"AzureSynapseAnalytics_LS_connectionString": {
+						"value": "[parameters('AzureSynapseAnalytics_LS_connectionString')]"
+					},
 					"Radio_LS_connectionString": {
 						"value": "[parameters('Radio_LS_connectionString')]"
 					},
-					"AzureSynapseAnalytics_LS_connectionString": {
-						"value": "[parameters('AzureSynapseAnalytics_LS_connectionString')]"
+					"DataBlobStorage_LS_connectionString": {
+						"value": "[parameters('DataBlobStorage_LS_connectionString')]"
+					},
+					"AzureSql_LS_connectionString": {
+						"value": "[parameters('AzureSql_LS_connectionString')]"
+					},
+					"Logging_LS_connectionString": {
+						"value": "[parameters('Logging_LS_connectionString')]"
 					}
 				}
 			},
