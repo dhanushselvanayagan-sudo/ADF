@@ -1,8 +1,8 @@
 {
-	"name": "BlobDestination_DS",
+	"name": "Movies_DS1",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "BlobDestination_LS",
+			"referenceName": "DataBlobStorage_LS",
 			"type": "LinkedServiceReference"
 		},
 		"annotations": [],
@@ -10,8 +10,8 @@
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobStorageLocation",
-				"fileName": "MoviesUpdate.csv",
-				"folderPath": "OutPut",
+				"fileName": "movies.csv",
+				"folderPath": "Data_Transformation/input",
 				"container": "data-files"
 			},
 			"columnDelimiter": ",",

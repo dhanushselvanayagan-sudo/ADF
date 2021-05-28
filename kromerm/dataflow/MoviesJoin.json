@@ -1,0 +1,31 @@
+{
+	"name": "MoviesJoin",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "Movies_DS1",
+						"type": "DatasetReference"
+					},
+					"name": "SourceMovies1"
+				},
+				{
+					"dataset": {
+						"referenceName": "Movies_DS2",
+						"type": "DatasetReference"
+					},
+					"name": "SourceMovie2"
+				}
+			],
+			"sinks": [],
+			"transformations": [
+				{
+					"name": "Join"
+				}
+			],
+			"script": "source(output(\n\t\tmovieId as integer,\n\t\ttitle as string,\n\t\tgenres as string\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tlimit: 100) ~> SourceMovies1\nsource(output(\n\t\tmovie as integer,\n\t\ttitle as string,\n\t\tgenres as string,\n\t\tyear as integer,\n\t\tRating as integer,\n\t\t{Rotton Tomato} as integer\n\t),\n\tallowSchemaDrift: true,\n\tvalidateSchema: false,\n\tignoreNoFilesFound: false,\n\tlimit: 100) ~> SourceMovie2\nSourceMovies1, SourceMovie2 join(SourceMovies1@title == SourceMovie2@title,\n\tjoinType:'inner',\n\tbroadcast: 'off')~> Join"
+		}
+	}
+}

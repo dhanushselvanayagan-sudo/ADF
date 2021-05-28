@@ -1,5 +1,5 @@
 {
-	"name": "BlobDestination_DS",
+	"name": "Movies_DS2",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "BlobDestination_LS",
