@@ -1,8 +1,8 @@
 {
-	"name": "Movies_DS1",
+	"name": "Movies2_DS_2",
 	"properties": {
 		"linkedServiceName": {
-			"referenceName": "DataBlobStorage_LS",
+			"referenceName": "BlobDestination_LS",
 			"type": "LinkedServiceReference"
 		},
 		"annotations": [],
