@@ -20,6 +20,9 @@
 		"Logging_LS_connectionString": {
 			"value": ""
 		},
+		"BlobDestination_LS_connectionString": {
+			"value": ""
+		},
 		"containerUri": {
 			"value": ""
 		},
